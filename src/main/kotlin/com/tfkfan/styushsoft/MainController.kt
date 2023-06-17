@@ -8,6 +8,8 @@ import javafx.scene.text.TextFlow
 import javafx.stage.DirectoryChooser
 import org.apache.poi.hwpf.*
 import org.apache.poi.hwpf.extractor.WordExtractor
+import org.apache.poi.xwpf.extractor.XWPFWordExtractor
+import org.apache.poi.xwpf.usermodel.XWPFDocument
 import java.awt.Desktop
 import java.io.File
 import java.io.IOException
@@ -70,7 +72,6 @@ class MainController {
                     val file = fileStack.pop()
                     if (file.isDirectory) file!!.listFiles()?.let { fileStack.addAll(it) }
                     else if (file.isFile) files.add(file)
-
                 }
             } else {
                 directory!!.listFiles()?.let { files.addAll(it) }
@@ -78,7 +79,7 @@ class MainController {
 
             processed.set(0)
             total.set(files.size)
-            updateProgress()
+            updateProgress(true)
             foundDocuments.children.clear()
             foundDocuments.isVisible = true
 
@@ -86,11 +87,19 @@ class MainController {
                 if (file.isFile)
                     executorService.submit {
                         val inputString = try {
-                            val doc = HWPFDocument(
-                                file.inputStream()
-                            )
-                            val ext = WordExtractor(doc)
-                            ext.text
+                            println(file.extension)
+                            when (file.extension) {
+                                "doc" -> {
+                                    WordExtractor(HWPFDocument(file.inputStream())).text
+                                }
+                                "docx" -> {
+                                    XWPFWordExtractor(XWPFDocument(file.inputStream())).text
+                                }
+                                else -> {
+                                    val inputStream: InputStream = file.inputStream()
+                                    inputStream.bufferedReader().use { it.readText() }
+                                }
+                            }
                         } catch (e: Exception) {
                             println(e)
                             val inputStream: InputStream = file.inputStream()
@@ -98,7 +107,7 @@ class MainController {
                         }
                         if (inputString.contains(text, true)) {
                             found.incrementAndGet()
-                            Platform.runLater{
+                            Platform.runLater {
                                 val link = Hyperlink(file.absolutePath)
                                 foundDocuments.children.add(link)
                                 link.setOnAction { _: ActionEvent ->
@@ -117,7 +126,7 @@ class MainController {
                             }
                         }
                         processed.incrementAndGet()
-                        Platform.runLater{
+                        Platform.runLater {
                             updateProgress()
                         }
                     }
@@ -127,11 +136,14 @@ class MainController {
         }
     }
 
-    private fun updateProgress() {
+    private fun updateProgress(setZero: Boolean = false) {
         synchronized(loader) {
             foundLabel.isVisible = true
             foundLabel.text = "Найдено в ${found.get()} документах"
-            loader.progress = processed.get() / total.get().toDouble()
+            if (setZero)
+                loader.progress = 0.0
+            else
+                loader.progress = processed.get() / total.get().toDouble() + 1 / total.get().toDouble()
         }
     }
 }

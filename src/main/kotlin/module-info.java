@@ -8,6 +8,7 @@ module com.tfkfan.styushsoft {
     requires kotlin.stdlib.jdk7;
     requires java.desktop;
     requires org.apache.poi.scratchpad;
+    requires org.apache.poi.ooxml;
 
     opens com.tfkfan.styushsoft to javafx.fxml;
     exports com.tfkfan.styushsoft;
