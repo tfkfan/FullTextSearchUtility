@@ -78,6 +78,7 @@ class MainController {
             }
 
             processed.set(0)
+            found.set(0)
             total.set(files.size)
             updateProgress(true)
             foundDocuments.children.clear()
